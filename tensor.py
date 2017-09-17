@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 sess = tf.Session()
 
@@ -11,6 +12,7 @@ node3 = tf.add(node1, node2)
 print("node3:", node3)
 print("sess.run(node3):", sess.run(node3))
 
+# Basic
 a = tf.placeholder(tf.float32)
 b = tf.placeholder(tf.float32)
 adder_node = a + b
@@ -37,6 +39,36 @@ loss = tf.reduce_sum(squared_deltas)
 print(sess.run(loss, {x: [1, 2, 3, 4], y: [0, -1, -2, -3]}))
 
 fixW = tf.assign(W, [-1.])
-fixb = tf.assign(b, [1.])
-sess.run([fixW, fixb])
+fixB = tf.assign(b, [1.])
+sess.run([fixW, fixB])
 print(sess.run(loss, {x: [1, 2, 3, 4], y: [0, -1, -2, -3]}))
+
+# Train
+optimizer = tf.train.GradientDescentOptimizer(0.01)
+train = optimizer.minimize(loss)
+sess.run(init)  # reset values to incorrect defaults.
+for i in range(1000):
+    sess.run(train, {x: [1, 2, 3, 4], y: [0, -1, -2, -3]})
+print(sess.run([W, b]))
+
+print(sess.run(loss, {x: [1, 2, 3, 4], y: [0, -1, -2, -3]}))
+
+# Estimate
+feature_columns = [tf.feature_column.numeric_column("x", shape=[1])]
+estimator = tf.estimator.LinearRegressor(feature_columns=feature_columns)
+
+x_train = np.array([1., 2., 3., 4.])
+y_train = np.array([0., -1., -2., -3.])
+x_eval = np.array([2., 5., 8., 1.])
+y_eval = np.array([-1.01, -4.1, -7, 0.])
+
+input_fn = tf.estimator.inputs.numpy_input_fn({"x": x_train}, y_train, batch_size=4, num_epochs=None, shuffle=True)
+train_input_fn = tf.estimator.inputs.numpy_input_fn({"x": x_train}, y_train, batch_size=4, num_epochs=1000, shuffle=False)
+eval_input_fn = tf.estimator.inputs.numpy_input_fn({"x": x_eval}, y_eval, batch_size=4, num_epochs=1000, shuffle=False)
+
+estimator.train(input_fn=input_fn, steps=1000)
+
+train_metrics = estimator.evaluate(input_fn=train_input_fn)
+eval_metrics = estimator.evaluate(input_fn=eval_input_fn)
+print("train metrics: %r"% train_metrics)
+print("eval metrics: %r"% eval_metrics)
